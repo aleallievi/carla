@@ -42,6 +42,8 @@ namespace nav {
 
     /// create the crowd object
     void CreateCrowd(void);
+    /// create a new car dummy
+    bool AddVehicle(ActorId id, carla::geom::Location from, float length);
     /// create a new walker
     bool AddWalker(ActorId id, carla::geom::Location from);
     /// remove a walker
@@ -63,6 +65,8 @@ namespace nav {
 
   private:
 
+    bool AddAgent(ActorId id, carla::geom::Location from, float radius, bool invalid);
+
     bool _ready { false };
     std::vector<uint8_t> _binaryMesh;
     double _delta_seconds;
@@ -73,6 +77,8 @@ namespace nav {
     dtCrowd *_crowd { nullptr };
     /// mapping Id
     std::unordered_map<ActorId, int> _mappedId;
+    /// ids of vehicles
+    std::set<ActorId> _vehicleId;
     /// Store walkers yaw angle from previous tick
     std::unordered_map<ActorId, float> _yaw_walkers;
 

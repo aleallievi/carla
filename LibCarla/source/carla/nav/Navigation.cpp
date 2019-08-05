@@ -323,9 +323,24 @@ namespace nav {
 
     return true;
   }
+  // create a new dummy car in crowd for avoidance
+  bool Navigation::AddVehicle(ActorId id, carla::geom::Location from, float length) {
+    bool success = AddAgent(id, from, length, true);
+    if (success) {
+      _vehicleId.insert(id);
+    }
+
+    return success;
+  }
 
   // create a new walker in crowd
   bool Navigation::AddWalker(ActorId id, carla::geom::Location from) {
+    return AddAgent(id, from, AGENT_RADIUS, false); 
+  }
+
+  // add a agent
+  bool Navigation::AddAgent(ActorId id, carla::geom::Location from, float radius, bool invalid)
+  {
     dtCrowdAgentParams params;
 
     // force single thread running this
@@ -340,7 +355,7 @@ namespace nav {
 
     // set parameters
     memset(&params, 0, sizeof(params));
-    params.radius = AGENT_RADIUS;
+    params.radius = radius;
     params.height = AGENT_HEIGHT;
     params.maxAcceleration = 8.0f;
     params.maxSpeed = 1.47f;
@@ -364,6 +379,12 @@ namespace nav {
     int index = _crowd->addAgent(PointFrom, &params);
     if (index == -1) {
       return false;
+    }
+
+    if (invalid) {
+      // make cars invalid
+      dtCrowdAgent* ag = _crowd->getEditableAgent(index);
+      ag->state = CrowdAgentState::DT_CROWDAGENT_STATE_INVALID;
     }
 
     // save the id
@@ -398,6 +419,12 @@ namespace nav {
 
     // remove from mapping
     _mappedId.erase(it);
+
+    // remove from vehicleId if it is vehicle
+    auto pos = _vehicleId.find(id);
+    if (pos != _vehicleId.end()) {
+      _vehicleId.erase(pos);
+    }
 
     return true;
   }
@@ -505,7 +532,7 @@ namespace nav {
     // check if walker has finished
     for (int i = 0; i < _crowd->getAgentCount(); ++i) {
       const dtCrowdAgent *ag = _crowd->getAgent(i);
-      if (!ag->active) {
+      if (!ag->active || ag->state == CrowdAgentState::DT_CROWDAGENT_STATE_INVALID) {
         continue;
       }
 
@@ -517,6 +544,30 @@ namespace nav {
         carla::geom::Location location;
         GetRandomLocation(location, 1, nullptr, false);
         SetWalkerTargetIndex(i, location, false);
+      }
+    }
+
+    // update all vehicles info
+    for (auto it = _mappedId.begin(); it != _mappedId.end(); ++it) {
+      if (_vehicleId.find(it->first) == _vehicleId.end()) {
+        continue;
+      }
+
+      if (state.ContainsActorSnapshot(it->first)) {
+        auto vehicleState = state.GetActorSnapshot(it->first);
+        dtCrowdAgent* ag = _crowd->getEditableAgent(it->second);
+        if (!ag) continue;
+        // update position
+        ag->npos[0] = vehicleState.transform.location.x;
+        ag->npos[1] = vehicleState.transform.location.y;
+        ag->npos[2] = vehicleState.transform.location.z;
+        // update velocity
+        ag->dvel[0] = vehicleState.velocity.x;
+        ag->dvel[1] = vehicleState.velocity.y;
+        ag->dvel[2] = vehicleState.velocity.z;
+        ag->vel[0]  = vehicleState.velocity.x;
+        ag->vel[1]  = vehicleState.velocity.y;
+        ag->vel[2]  = vehicleState.velocity.z;
       }
     }
   }
