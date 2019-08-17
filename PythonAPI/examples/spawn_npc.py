@@ -12,20 +12,35 @@ import glob
 import os
 import sys
 
-try:
-    sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
-        sys.version_info.major,
-        sys.version_info.minor,
-        'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
-except IndexError:
-    pass
+# try:
+#     sys.path.append(glob.glob('../carla/dist/carla-*%d.%d-%s.egg' % (
+#         sys.version_info.major,
+#         sys.version_info.minor,
+#         'win-amd64' if os.name == 'nt' else 'linux-x86_64'))[0])
+# except IndexError:
+#     pass
 
 import carla
+from carla import ColorConverter
 
 import argparse
 import logging
 import random
+import queue
 
+import numpy as np
+from skimage.io import imsave
+
+
+def carla_img_to_np(carla_img):
+    carla_img.convert(ColorConverter.Raw)
+
+    img = np.frombuffer(carla_img.raw_data, dtype=np.dtype('uint8'))
+    img = np.reshape(img, (carla_img.height, carla_img.width, 4))
+    img = img[:,:,:3]
+    img = img[:,:,::-1]
+
+    return img
 
 def main():
     argparser = argparse.ArgumentParser(
@@ -44,13 +59,13 @@ def main():
     argparser.add_argument(
         '-n', '--number-of-vehicles',
         metavar='N',
-        default=10,
+        default=100,
         type=int,
         help='number of vehicles (default: 10)')
     argparser.add_argument(
         '-w', '--number-of-walkers',
         metavar='W',
-        default=50,
+        default=200,
         type=int,
         help='number of walkers (default: 50)')
     argparser.add_argument(
@@ -73,13 +88,17 @@ def main():
 
     vehicles_list = []
     walkers_list = []
+    camera_list = []
+    vehicle_id = []
     all_id = []
     client = carla.Client(args.host, args.port)
     client.set_timeout(2.0)
-
+    
+    # import pdb; pdb.set_trace()
+    
     try:
-
-        world = client.get_world()
+        # client.reload_world()
+        world = client.load_world('Town01')
         blueprints = world.get_blueprint_library().filter(args.filterv)
         blueprintsWalkers = world.get_blueprint_library().filter(args.filterw)
 
@@ -108,6 +127,7 @@ def main():
         # --------------
         batch = []
         for n, transform in enumerate(spawn_points):
+            # transform = carla.Transform(carla.Location(x=322.790924, y=-2.114089, z=1.320535), carla.Rotation(pitch=0.000000, yaw=-179.999939, roll=0.000000))
             if n >= args.number_of_vehicles:
                 break
             blueprint = random.choice(blueprints)
@@ -119,12 +139,19 @@ def main():
                 blueprint.set_attribute('driver_id', driver_id)
             blueprint.set_attribute('role_name', 'autopilot')
             batch.append(SpawnActor(blueprint, transform).then(SetAutopilot(FutureActor, True)))
+            # batch.append(SpawnActor(blueprint, transform).then(SetAutopilot(FutureActor, False)))
+
 
         for response in client.apply_batch_sync(batch):
             if response.error:
                 logging.error(response.error)
             else:
                 vehicles_list.append(response.actor_id)
+
+        for i in range(len(vehicles_list)):
+            vehicle_id.append(vehicles_list[i])
+
+        vehicles = world.get_actors(vehicle_id)
 
         # -------------
         # Spawn Walkers
@@ -134,9 +161,13 @@ def main():
         for i in range(args.number_of_walkers):
             spawn_point = carla.Transform()
             loc = world.get_random_location_from_navigation()
+            # loc = carla.Location(x=330.790924, y=-2.114089, z=1.320535)
+
             if (loc != None):
                 spawn_point.location = loc
                 spawn_points.append(spawn_point)
+                
+            print (loc)
         # 2. we spawn the walker object
         batch = []
         for spawn_point in spawn_points:
@@ -177,15 +208,68 @@ def main():
             all_actors[i].start()
             # set walk to random point
             all_actors[i].go_to_location(world.get_random_location_from_navigation())
+            # all_actors[i].go_to_location(carla.Location(x=314.790924, y=-2.114089, z=1.320535))
+            # all_actors[i].go_to_location(loc+carla.Location(x=10.0))
             # random max speed
             all_actors[i].set_max_speed(1 + random.random())    # max speed between 1 and 2 (default is 1.4 m/s)
 
         print('spawned %d vehicles and %d walkers, press Ctrl+C to exit.' % (len(vehicles_list), len(walkers_list)))
+        
+        # # NOTE: This has to happen after walkers spawning!
+        # batch = []
+        # vehicle_controller_id = []
+        # walker_controller_bp = world.get_blueprint_library().find('controller.ai.walker')
+        # for i in range(len(vehicle_id)):
+        #     batch.append(SpawnActor(walker_controller_bp, carla.Transform(), vehicle_id[i]))
+        # results = client.apply_batch_sync(batch, True)
+        # for i in range(len(results)):
+        #     if results[i].error:
+        #         logging.error(results[i].error)
+        #     else:
+        #         vehicle_controller_id.append(results[i].actor_id)
 
-        while True:
+        # vehicle_controller = world.get_actors(vehicle_controller_id)
+
+        for i in range(len(vehicles)):
+            # start walker
+            vehicles[i].start_dtcrowd()
+            # set walk to random point
+            # vehicle_controller[i].start()
+            # vehicle_controller[i].go_to_location(world.get_random_location_from_navigation())
+            # vehicle_controller[i].set_max_speed(1 + random.random())
+
+
+        # Set camera
+        rgb_queue = queue.Queue()
+        rgb_camera_bp = world.get_blueprint_library().find('sensor.camera.rgb')
+        rgb_camera_bp.set_attribute('image_size_x', '800')
+        rgb_camera_bp.set_attribute('image_size_y', '600')
+        rgb_camera_bp.set_attribute('fov', '100')
+        rgb_camera = world.spawn_actor(
+            rgb_camera_bp,
+            carla.Transform(carla.Location(x=-3.5, z=1.4), carla.Rotation(pitch=-15)),
+            attach_to=all_actors[39])
+
+        rgb_camera.listen(rgb_queue.put)
+        camera_list.append(rgb_camera)
+        
+        for _ in range(20):
             world.wait_for_tick()
+            
+        with rgb_queue.mutex:
+            rgb_queue.queue.clear()
+        
+        for t in range(2000):
+            ts = world.wait_for_tick()
+            rgb_image = carla_img_to_np(rgb_queue.get())
+            imsave('tmp/test-%04d.jpg'%t, rgb_image)
+            
 
     finally:
+
+        # remove peds from dtcrowd
+        for i in range(len(vehicle_id)):
+            vehicles[i].stop_dtcrowd()
 
         print('\ndestroying %d vehicles' % len(vehicles_list))
         client.apply_batch([carla.command.DestroyActor(x) for x in vehicles_list])
@@ -206,3 +290,4 @@ if __name__ == '__main__':
         pass
     finally:
         print('\ndone.')
+
