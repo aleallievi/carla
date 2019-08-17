@@ -63,6 +63,8 @@ namespace nav {
     bool GetRandomLocation(carla::geom::Location &location, float maxHeight = -1.0f,
     dtQueryFilter * filter = nullptr, bool use_lock = true) const;
 
+    int GetNumAgents() const;
+
   private:
 
     bool AddAgent(ActorId id, carla::geom::Location from, float radius, bool invalid);

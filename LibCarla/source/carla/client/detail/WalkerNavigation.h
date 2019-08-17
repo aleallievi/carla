@@ -58,6 +58,11 @@ namespace detail {
       _nav.AddWalker(walker_id, location);
     }
 
+    void AddVehicle(ActorId vehicle_id, carla::geom::Location location, float length) {
+      // create the dummy vehicle in the crowd for avoidance (prevent 'insurance fraud')
+      _nav.AddVehicle(vehicle_id, location, length);
+    }
+
     void Tick(const EpisodeState &episode_state);
 
     // Get Random location in nav mesh

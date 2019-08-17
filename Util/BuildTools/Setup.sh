@@ -289,7 +289,8 @@ unset GTEST_BASENAME
 # -- Get Recast&Detour and compile it with libc++ ------------------------------
 # ==============================================================================
 
-RECAST_COMMIT="c40188c796f089f89a42e0b939d934178dbcfc5c"
+# RECAST_COMMIT="c40188c796f089f89a42e0b939d934178dbcfc5c"
+RECAST_COMMIT="2f190120aef4048f227fc0316fcae08742239d57"
 RECAST_BASENAME=recast-${CXX_TAG}
 
 RECAST_INCLUDE=${PWD}/${RECAST_BASENAME}-install/include
@@ -305,7 +306,7 @@ else
 
   log "Retrieving Recast & Detour"
 
-  git clone https://github.com/recastnavigation/recastnavigation.git ${RECAST_BASENAME}-source
+  git clone https://github.com/dianchen96/recastnavigation.git ${RECAST_BASENAME}-source
 
   pushd ${RECAST_BASENAME}-source >/dev/null
 

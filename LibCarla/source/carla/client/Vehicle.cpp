@@ -5,7 +5,6 @@
 // For a copy, see <https://opensource.org/licenses/MIT>.
 
 #include "carla/client/Vehicle.h"
-
 #include "carla/client/detail/Simulator.h"
 #include "carla/client/ActorList.h"
 #include "carla/client/TrafficLight.h"
@@ -66,6 +65,19 @@ namespace client {
   SharedPtr<TrafficLight> Vehicle::GetTrafficLight() const {
     auto id = GetEpisode().Lock()->GetActorSnapshot(*this).state.vehicle_data.traffic_light_id;
     return boost::static_pointer_cast<TrafficLight>(GetWorld().GetActor(id));
+  }
+
+  void Vehicle::StartDtCrowd() const {
+    auto nav = GetEpisode().Lock()->GetNavigation();
+    float length = GetBoundingBox().extent.x;
+    float width = GetBoundingBox().extent.y;
+    nav->AddVehicle(GetId(), GetLocation(), sqrt(length*length + width*width)*1.5f);
+    // nav->AddWalker(GetId(), GetLocation());
+  }
+
+  void Vehicle::StopDtCrowd() const {
+    auto nav = GetEpisode().Lock()->GetNavigation();
+    nav->RemoveWalker(GetId());
   }
 
 } // namespace client

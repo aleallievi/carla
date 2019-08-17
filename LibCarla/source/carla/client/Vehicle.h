@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <math.h>
 #include "carla/client/Actor.h"
 #include "carla/rpc/VehicleControl.h"
 #include "carla/rpc/VehiclePhysicsControl.h"
@@ -67,6 +68,12 @@ namespace client {
 
     /// Retrieve the traffic light actor currently affecting this vehicle.
     SharedPtr<TrafficLight> GetTrafficLight() const;
+
+    /// Hack to add itself to dtCrowd
+    void StartDtCrowd() const;
+
+    /// Hack to remove itself to dtCrowd
+    void StopDtCrowd() const;
 
   private:
 

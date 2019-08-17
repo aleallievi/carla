@@ -6,6 +6,7 @@
 
 #include "carla/client/detail/WalkerNavigation.h"
 
+#include "carla/Logging.h"
 #include "carla/client/detail/Client.h"
 #include "carla/client/detail/EpisodeState.h"
 #include "carla/rpc/Command.h"

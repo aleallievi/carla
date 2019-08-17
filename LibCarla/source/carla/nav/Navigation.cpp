@@ -54,6 +54,7 @@ namespace nav {
   static const int MAX_QUERY_SEARCH_NODES = 2048;
   static const float AGENT_HEIGHT = 1.8f;
   static const float AGENT_RADIUS = 0.3f;
+  static const float MAX_RADIUS = 5.0f;
 
   // return a random float
   static float frand() {
@@ -200,7 +201,7 @@ namespace nav {
 
     // create and init
     _crowd = dtAllocCrowd();
-    if (!_crowd->init(MAX_AGENTS, AGENT_RADIUS, _navMesh)) {
+    if (!_crowd->init(MAX_AGENTS, MAX_RADIUS, _navMesh)) {
       logging::log("Nav: failed to create crowd");
       return;
     }
@@ -323,11 +324,13 @@ namespace nav {
 
     return true;
   }
+
   // create a new dummy car in crowd for avoidance
   bool Navigation::AddVehicle(ActorId id, carla::geom::Location from, float length) {
     bool success = AddAgent(id, from, length, true);
     if (success) {
       _vehicleId.insert(id);
+    } else {
     }
 
     return success;
@@ -336,6 +339,7 @@ namespace nav {
   // create a new walker in crowd
   bool Navigation::AddWalker(ActorId id, carla::geom::Location from) {
     return AddAgent(id, from, AGENT_RADIUS, false); 
+    // return AddAgent(id, from, MAX_RADIUS, false); 
   }
 
   // add a agent
@@ -357,10 +361,10 @@ namespace nav {
     memset(&params, 0, sizeof(params));
     params.radius = radius;
     params.height = AGENT_HEIGHT;
-    params.maxAcceleration = 8.0f;
+    params.maxAcceleration = 2.0f;
     params.maxSpeed = 1.47f;
-    params.collisionQueryRange = params.radius * 12.0f;
-    params.pathOptimizationRange = params.radius * 30.0f;
+    params.collisionQueryRange = params.radius * 60.0f;
+    params.pathOptimizationRange = params.radius * 150.0f;
 
     // flags
     params.updateFlags = 0;
@@ -525,6 +529,36 @@ namespace nav {
 
     DEBUG_ASSERT(_crowd != nullptr);
 
+    // update all vehicles info
+    for (auto it = _mappedId.begin(); it != _mappedId.end(); ++it) {
+      if (_vehicleId.find(it->first) == _vehicleId.end()) {
+        continue;
+      }
+
+      if (state.ContainsActorSnapshot(it->first)) {
+        auto vehicleState = state.GetActorSnapshot(it->first);
+        dtCrowdAgent* ag = _crowd->getEditableAgent(it->second);
+        if (!ag) continue;
+
+        // logging::log("vehicle: ", it->first, " x: ,", vehicleState.transform.location.x, "y: ", vehicleState.transform.location.y);
+        // logging::log("radius: ", ag->params.radius);
+        // update position
+        ag->npos[0] = vehicleState.transform.location.x;
+        ag->npos[2] = vehicleState.transform.location.y;
+        ag->npos[1] = vehicleState.transform.location.z;
+        // update velocity
+        ag->dvel[0] = vehicleState.velocity.x;
+        ag->dvel[2] = vehicleState.velocity.y;
+        ag->dvel[1] = vehicleState.velocity.z;
+        ag->nvel[0]  = vehicleState.velocity.x;
+        ag->nvel[2]  = vehicleState.velocity.y;
+        ag->nvel[1]  = vehicleState.velocity.z;
+        ag->vel[0]  = vehicleState.velocity.x;
+        ag->vel[2]  = vehicleState.velocity.y;
+        ag->vel[1]  = vehicleState.velocity.z;
+      }
+    }
+
     // update all
     _delta_seconds = state.GetTimestamp().delta_seconds;
     _crowd->update(static_cast<float>(_delta_seconds), nullptr);
@@ -532,9 +566,11 @@ namespace nav {
     // check if walker has finished
     for (int i = 0; i < _crowd->getAgentCount(); ++i) {
       const dtCrowdAgent *ag = _crowd->getAgent(i);
-      if (!ag->active || ag->state == CrowdAgentState::DT_CROWDAGENT_STATE_INVALID) {
+      if (!ag->active) {
         continue;
       }
+
+      // logging::log("walker x: ", ag->npos[0], ", y: ", ag->npos[2]);
 
       // check distance to the target point
       const float *end = &ag->cornerVerts[(ag->ncorners - 1) * 3];
@@ -547,29 +583,6 @@ namespace nav {
       }
     }
 
-    // update all vehicles info
-    for (auto it = _mappedId.begin(); it != _mappedId.end(); ++it) {
-      if (_vehicleId.find(it->first) == _vehicleId.end()) {
-        continue;
-      }
-
-      if (state.ContainsActorSnapshot(it->first)) {
-        auto vehicleState = state.GetActorSnapshot(it->first);
-        dtCrowdAgent* ag = _crowd->getEditableAgent(it->second);
-        if (!ag) continue;
-        // update position
-        ag->npos[0] = vehicleState.transform.location.x;
-        ag->npos[1] = vehicleState.transform.location.y;
-        ag->npos[2] = vehicleState.transform.location.z;
-        // update velocity
-        ag->dvel[0] = vehicleState.velocity.x;
-        ag->dvel[1] = vehicleState.velocity.y;
-        ag->dvel[2] = vehicleState.velocity.z;
-        ag->vel[0]  = vehicleState.velocity.x;
-        ag->vel[1]  = vehicleState.velocity.y;
-        ag->vel[2]  = vehicleState.velocity.z;
-      }
-    }
   }
 
   // get the walker current transform
@@ -696,6 +709,19 @@ namespace nav {
     } while (1);
 
     return true;
+  }
+
+  int Navigation::GetNumAgents() const {
+    int count = 0;
+    for (int i = 0; i < _crowd->getAgentCount(); ++i) {
+      const dtCrowdAgent *ag = _crowd->getAgent(i);
+      if (!ag->active) {
+        continue;
+      }
+      count++;
+    }
+
+    return count;
   }
 
 } // namespace nav
