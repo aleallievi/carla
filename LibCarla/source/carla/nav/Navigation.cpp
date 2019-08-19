@@ -564,11 +564,14 @@ namespace nav {
     _crowd->update(static_cast<float>(_delta_seconds), nullptr);
 
     // check if walker has finished
+    int activeAgent = 0;
     for (int i = 0; i < _crowd->getAgentCount(); ++i) {
       const dtCrowdAgent *ag = _crowd->getAgent(i);
       if (!ag->active) {
         continue;
       }
+
+      activeAgent++;
 
       // logging::log("walker x: ", ag->npos[0], ", y: ", ag->npos[2]);
 
@@ -582,6 +585,8 @@ namespace nav {
         SetWalkerTargetIndex(i, location, false);
       }
     }
+
+    logging::log(activeAgent);
 
   }
 
