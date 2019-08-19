@@ -566,7 +566,7 @@ namespace nav {
     // check if walker has finished
     for (int i = 0; i < _crowd->getAgentCount(); ++i) {
       const dtCrowdAgent *ag = _crowd->getAgent(i);
-      if (!ag->active) {
+      if (!ag->active || ag->state == CrowdAgentState::DT_CROWDAGENT_STATE_INVALID) {
         continue;
       }
 
