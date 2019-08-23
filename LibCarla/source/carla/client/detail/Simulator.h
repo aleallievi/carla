@@ -192,6 +192,10 @@ namespace detail {
 
     boost::optional<geom::Location> GetRandomLocationFromNavigation();
 
+    std::shared_ptr<WalkerNavigation> CreateNavigationIfMissing() {
+      return _episode->CreateNavigationIfMissing();
+    }
+
     std::shared_ptr<WalkerNavigation> GetNavigation() {
       return _episode->GetNavigation();
     }
