@@ -71,7 +71,7 @@ namespace client {
     auto nav = GetEpisode().Lock()->CreateNavigationIfMissing();
     float length = GetBoundingBox().extent.x;
     float width = GetBoundingBox().extent.y;
-    nav->AddVehicle(GetId(), GetLocation(), sqrt(length*length + width*width));
+    nav->AddVehicle(GetId(), GetLocation(), sqrt(length*length + width*width)*1.2f);
     // nav->AddWalker(GetId(), GetLocation());
   }
 
