@@ -118,6 +118,7 @@ void export_actor() {
     .def("start", &cc::WalkerAIController::Start)
     .def("stop", &cc::WalkerAIController::Stop)
     .def("go_to_location", &cc::WalkerAIController::GoToLocation, (arg("destination")))
+    .def("teleport_to_location", &cc::WalkerAIController::TeleportToLocation, (arg("destination")))
     .def("set_max_speed", &cc::WalkerAIController::SetMaxSpeed, (arg("speed")))
     .def(self_ns::str(self_ns::self))
   ;
