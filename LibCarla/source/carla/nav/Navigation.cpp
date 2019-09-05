@@ -711,6 +711,49 @@ namespace nav {
     return true;
   }
 
+  bool Navigation::TeleportWalker(ActorId id, const carla::geom::Location &destination) {
+    // get the internal index
+    auto it = _mappedId.find(id);
+    if (it == _mappedId.end()) {
+      return false;
+    }
+
+    // get the index found
+    int index = it->second;
+    if (index == -1) {
+      return false;
+    }
+
+    // get the walker
+    dtCrowdAgent *agent = _crowd->getEditableAgent(index);
+
+    if (!agent) {
+      return false;
+    }
+
+    if (!agent->active) {
+      return false;
+    }
+
+    // update position
+    agent->npos[0] = destination.x;
+    agent->npos[2] = destination.y;
+    agent->npos[1] = destination.z;
+    // reset velocity
+    agent->dvel[0] = 0.0f;
+    agent->dvel[2] = 0.0f;
+    agent->dvel[1] = 0.0f;
+    agent->nvel[0] = 0.0f;
+    agent->nvel[2] = 0.0f;
+    agent->nvel[1] = 0.0f;
+    agent->vel[0]  = 0.0f;
+    agent->vel[2]  = 0.0f;
+    agent->vel[1]  = 0.0f;
+
+    return true;
+
+  }
+
   int Navigation::GetNumAgents() const {
     int count = 0;
     for (int i = 0; i < _crowd->getAgentCount(); ++i) {

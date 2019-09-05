@@ -79,6 +79,18 @@ namespace detail {
       return _nav.SetWalkerTarget(id, to);
     }
 
+    // teleport the walker
+    bool TeleportWalker(ActorId id, const carla::geom::Location to) {
+      
+      if (_nav.TeleportWalker(id, to)) {
+        geom::Location target(0, 0, 0);
+        _nav.GetRandomLocation(target, 1.0f);
+        return SetWalkerTarget(id, target);
+      }
+
+      return false;
+    }
+
     // set new max speed
     bool SetWalkerMaxSpeed(ActorId id, float max_speed) {
       return _nav.SetWalkerMaxSpeed(id, max_speed);

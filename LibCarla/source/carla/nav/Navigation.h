@@ -63,6 +63,8 @@ namespace nav {
     bool GetRandomLocation(carla::geom::Location &location, float maxHeight = -1.0f,
     dtQueryFilter * filter = nullptr, bool use_lock = true) const;
 
+    bool TeleportWalker(ActorId id, const carla::geom::Location &destination);
+
     int GetNumAgents() const;
 
   private:

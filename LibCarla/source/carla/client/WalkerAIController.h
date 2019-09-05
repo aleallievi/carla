@@ -28,6 +28,8 @@ namespace client {
 
     void GoToLocation(const carla::geom::Location &destination);
 
+    void TeleportToLocation(const carla::geom::Location &destination);
+
     void SetMaxSpeed(const float max_speed);
   };
 

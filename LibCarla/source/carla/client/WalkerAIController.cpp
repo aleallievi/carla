@@ -62,6 +62,20 @@ namespace client {
     }
   }
 
+  void WalkerAIController::TeleportToLocation(const carla::geom::Location &destination) {
+    auto nav = GetEpisode().Lock()->GetNavigation();
+    if (nav != nullptr) {
+      auto walker = GetParent();
+      if (walker != nullptr) {
+        if (!nav->TeleportWalker(walker->GetId(), destination)) {
+          log_warning("NAV: Failed to set request to teleport to ", destination.x, destination.y, destination.z);
+        }
+      } else {
+        log_warning("NAV: Failed to set request to teleport to ", destination.x, destination.y, destination.z, "(parent does not exist)");
+      }
+    }
+  }
+
   void WalkerAIController::SetMaxSpeed(const float max_speed) {
     auto nav = GetEpisode().Lock()->GetNavigation();
     if (nav != nullptr) {
