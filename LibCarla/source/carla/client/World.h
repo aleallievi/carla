@@ -115,7 +115,7 @@ namespace client {
     /// synchronous mode).
     ///
     /// @return The id of the frame that this call started.
-    uint64_t Tick();
+    uint64_t Tick(time_duration timeout);
 
     DebugHelper MakeDebugHelper() const {
       return DebugHelper{_episode};
